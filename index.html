@@ -2,7 +2,12 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
     <title>直播</title>
 
     <style>
@@ -25,6 +30,13 @@
             border: none;
             display: block;
         }
+
+        #errorMessage {
+            display: none;
+            padding: 20px;
+            color: #c00;
+            font-size: 16px;
+        }
     </style>
 </head>
 
@@ -32,30 +44,45 @@
     <iframe
         id="liveFrame"
         allow="autoplay; fullscreen"
-        allowfullscreen>
-    </iframe>
+        allowfullscreen
+    ></iframe>
+
+    <div id="errorMessage"></div>
 
     <script>
-        /*
-         * 当前地址格式：
-         * /web/live/10038/ZSI6eO/sid/1786769054
-         */
+        (function () {
+            const liveFrame = document.getElementById('liveFrame');
+            const errorMessage =
+                document.getElementById('errorMessage');
 
-        const parts = window.location.pathname
-            .split('/')
-            .filter(Boolean);
+            function showError(message) {
+                liveFrame.style.display = 'none';
+                errorMessage.style.display = 'block';
+                errorMessage.textContent = message;
+            }
 
-        const liveIndex = parts.indexOf('live');
+            /*
+             * 页面地址格式：
+             * /web/live/10038/ZSI6eO/sid/1786769054
+             */
+            const parts = window.location.pathname
+                .split('/')
+                .filter(Boolean);
 
-        if (
-            liveIndex === -1 ||
-            !parts[liveIndex + 1] ||
-            !parts[liveIndex + 2] ||
-            parts[liveIndex + 3] !== 'sid' ||
-            !parts[liveIndex + 4]
-        ) {
-            document.body.innerHTML = '参数错误';
-        } else {
+            const liveIndex = parts.indexOf('live');
+
+            const validPath =
+                liveIndex !== -1 &&
+                parts[liveIndex + 1] &&
+                parts[liveIndex + 2] &&
+                parts[liveIndex + 3] === 'sid' &&
+                parts[liveIndex + 4];
+
+            if (!validPath) {
+                showError('参数错误');
+                return;
+            }
+
             const id = parts[liveIndex + 1];
             const pwd = parts[liveIndex + 2];
             const sid = parts[liveIndex + 4];
@@ -66,8 +93,68 @@
                 encodeURIComponent(pwd) + '/sid/' +
                 encodeURIComponent(sid);
 
-            document.getElementById('liveFrame').src = targetUrl;
-        }
+            console.log('加载直播页面：', targetUrl);
+
+            liveFrame.src = targetUrl;
+
+            /*
+             * 接收 live.stmpsk.cn iframe 发来的微信登录消息。
+             */
+            window.addEventListener('message', function (event) {
+                console.log('父页面收到消息：', {
+                    origin: event.origin,
+                    data: event.data
+                });
+
+                // 只接受指定直播域名
+                if (event.origin !== 'https://live.stmpsk.cn') {
+                    console.warn(
+                        '忽略其他来源的消息：',
+                        event.origin
+                    );
+                    return;
+                }
+
+                if (
+                    !event.data ||
+                    event.data.type !== 'wechat-login' ||
+                    !event.data.url
+                ) {
+                    return;
+                }
+
+                try {
+                    const authUrl = new URL(event.data.url);
+
+                    // 只允许跳转到微信官方 OAuth 地址
+                    if (
+                        authUrl.protocol !== 'https:' ||
+                        authUrl.hostname !==
+                            'open.weixin.qq.com' ||
+                        authUrl.pathname !==
+                            '/connect/oauth2/authorize'
+                    ) {
+                        console.error(
+                            '微信授权地址无效：',
+                            authUrl.href
+                        );
+                        return;
+                    }
+
+                    console.log(
+                        '顶层跳转微信授权：',
+                        authUrl.href
+                    );
+
+                    window.location.href = authUrl.href;
+                } catch (error) {
+                    console.error(
+                        '解析微信授权地址失败：',
+                        error
+                    );
+                }
+            });
+        })();
     </script>
 </body>
 </html>
