@@ -1,81 +1,61 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<title>页面加载中...</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直播</title>
 
-<style>
-html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: #fff;
-}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-/* iframe 容器 */
-#iframe-wrapper {
-    position: fixed;
-    inset: 0;
-    background: #fff;
-}
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
 
-/* iframe 本体 */
-#iframe-wrapper iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-    outline: none;
-    display: block;
-}
-
-/* 可选：加载遮罩 */
-#loading {
-    position: fixed;
-    inset: 0;
-    background: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    color: #666;
-    z-index: 10;
-}
-</style>
+        #liveFrame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+    </style>
 </head>
 
 <body>
 
-<div id="loading">页面加载中…</div>
-
-<div id="iframe-wrapper">
-    <iframe 
-        src="http://czhliv74.bk5e.com/live/10038/ZSI6eO/s" 
-        scrolling="no"
-        referrerpolicy="no-referrer"
-        allowfullscreen
-        id="mainFrame">
-    </iframe>
-</div>
+<iframe
+    id="liveFrame"
+    allow="autoplay; fullscreen"
+    allowfullscreen>
+</iframe>
 
 <script>
-const iframe = document.getElementById('mainFrame');
-const loading = document.getElementById('loading');
+    const params = new URLSearchParams(window.location.search);
 
-// iframe 加载完成后隐藏 loading
-iframe.onload = function () {
-    loading.style.display = 'none';
-};
+    const id = params.get("id");
+    const pwd = params.get("pwd");
+    const s = params.get("s");
 
-// 超时兜底（防止一直 loading）
-setTimeout(() => {
-    loading.style.display = 'none';
-}, 5000);
+    if (!id || !pwd || !s) {
+        document.body.innerHTML = "参数错误";
+    } else {
+        const url =
+            "https://live.stmpsk.cn/live/" +
+            encodeURIComponent(id) + "/" +
+            encodeURIComponent(pwd) + "/" +
+            encodeURIComponent(s);
+
+        console.log("iframe地址：", url);
+
+        document.getElementById("liveFrame").src = url;
+    }
 </script>
 
 </body>
 </html>
-
-
