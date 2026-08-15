@@ -12,7 +12,8 @@
             box-sizing: border-box;
         }
 
-        html, body {
+        html,
+        body {
             width: 100%;
             height: 100%;
             overflow: hidden;
@@ -28,34 +29,45 @@
 </head>
 
 <body>
+    <iframe
+        id="liveFrame"
+        allow="autoplay; fullscreen"
+        allowfullscreen>
+    </iframe>
 
-<iframe
-    id="liveFrame"
-    allow="autoplay; fullscreen"
-    allowfullscreen>
-</iframe>
+    <script>
+        /*
+         * 当前地址格式：
+         * /web/live/10038/ZSI6eO/sid/1786769054
+         */
 
-<script>
-    const params = new URLSearchParams(window.location.search);
+        const parts = window.location.pathname
+            .split('/')
+            .filter(Boolean);
 
-    const id = params.get("id");
-    const pwd = params.get("pwd");
-    const s = params.get("s");
+        const liveIndex = parts.indexOf('live');
 
-    if (!id || !pwd || !s) {
-        document.body.innerHTML = "参数错误";
-    } else {
-        const url =
-            "https://live.stmpsk.cn/live/" +
-            encodeURIComponent(id) + "/" +
-            encodeURIComponent(pwd) + "/" +
-            encodeURIComponent(s);
+        if (
+            liveIndex === -1 ||
+            !parts[liveIndex + 1] ||
+            !parts[liveIndex + 2] ||
+            parts[liveIndex + 3] !== 'sid' ||
+            !parts[liveIndex + 4]
+        ) {
+            document.body.innerHTML = '参数错误';
+        } else {
+            const id = parts[liveIndex + 1];
+            const pwd = parts[liveIndex + 2];
+            const sid = parts[liveIndex + 4];
 
-        console.log("iframe地址：", url);
+            const targetUrl =
+                'https://live.stmpsk.cn/live/' +
+                encodeURIComponent(id) + '/' +
+                encodeURIComponent(pwd) + '/sid/' +
+                encodeURIComponent(sid);
 
-        document.getElementById("liveFrame").src = url;
-    }
-</script>
-
+            document.getElementById('liveFrame').src = targetUrl;
+        }
+    </script>
 </body>
 </html>
