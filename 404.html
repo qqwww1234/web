@@ -22,6 +22,7 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
+            background: #fff;
         }
 
         #liveFrame {
@@ -51,7 +52,15 @@
 
     <script>
         (function () {
-            const liveFrame = document.getElementById('liveFrame');
+            const LIVE_ORIGIN =
+                'https://live.stmpsk.cn';
+
+            const GITHUB_ORIGIN =
+                'https://qqwww1234.github.io';
+
+            const liveFrame =
+                document.getElementById('liveFrame');
+
             const errorMessage =
                 document.getElementById('errorMessage');
 
@@ -62,7 +71,7 @@
             }
 
             /*
-             * 页面地址格式：
+             * 读取路径：
              * /web/live/10038/ZSI6eO/sid/1786769054
              */
             const parts = window.location.pathname
@@ -87,73 +96,236 @@
             const pwd = parts[liveIndex + 2];
             const sid = parts[liveIndex + 4];
 
+            /*
+             * 读取微信授权回调带回的用户信息
+             */
+            const query =
+                new URLSearchParams(window.location.search);
+
+            const callbackUser = {
+                user_id: query.get('user_id') || '',
+                openid: query.get('openid') || '',
+                user_nickname:
+                    query.get('user_nickname') || '',
+                user_touxiang:
+                    query.get('user_touxiang') || ''
+            };
+
+            /*
+             * 授权回调有用户信息时，保存到GitHub域名的
+             * localStorage。
+             */
+            if (callbackUser.openid) {
+                localStorage.setItem(
+                    'login_openid',
+                    callbackUser.openid
+                );
+
+                localStorage.setItem(
+                    'login_user_id',
+                    callbackUser.user_id
+                );
+
+                localStorage.setItem(
+                    'login_user_nickname',
+                    callbackUser.user_nickname
+                );
+
+                localStorage.setItem(
+                    'login_user_touxiang',
+                    callbackUser.user_touxiang
+                );
+
+                console.log(
+                    '微信用户信息已保存：',
+                    callbackUser
+                );
+            }
+
+            /*
+             * 获取最终用户信息：
+             * 优先使用本次回调参数，否则读取localStorage。
+             */
+            function getLoginUser() {
+                return {
+                    user_id:
+                        callbackUser.user_id ||
+                        localStorage.getItem(
+                            'login_user_id'
+                        ) ||
+                        '',
+
+                    openid:
+                        callbackUser.openid ||
+                        localStorage.getItem(
+                            'login_openid'
+                        ) ||
+                        '',
+
+                    user_nickname:
+                        callbackUser.user_nickname ||
+                        localStorage.getItem(
+                            'login_user_nickname'
+                        ) ||
+                        '',
+
+                    user_touxiang:
+                        callbackUser.user_touxiang ||
+                        localStorage.getItem(
+                            'login_user_touxiang'
+                        ) ||
+                        ''
+                };
+            }
+
+            /*
+             * 生成直播iframe地址。
+             */
             const targetUrl =
-                'https://live.stmpsk.cn/live/' +
+                LIVE_ORIGIN + '/live/' +
                 encodeURIComponent(id) + '/' +
                 encodeURIComponent(pwd) + '/sid/' +
                 encodeURIComponent(sid);
 
-            console.log('加载直播页面：', targetUrl);
+            console.log('加载直播地址：', targetUrl);
+
+            /*
+             * 先注册load事件，再设置iframe地址。
+             */
+            liveFrame.addEventListener(
+                'load',
+                function () {
+                    const loginUser = getLoginUser();
+
+                    console.log(
+                        '向直播iframe发送登录信息：',
+                        loginUser
+                    );
+
+                    liveFrame.contentWindow.postMessage({
+                        type: 'login-user',
+                        user: loginUser
+                    }, LIVE_ORIGIN);
+                }
+            );
 
             liveFrame.src = targetUrl;
 
             /*
-             * 接收 live.stmpsk.cn iframe 发来的微信登录消息。
+             * 接收直播iframe发来的消息。
              */
-            window.addEventListener('message', function (event) {
-                console.log('父页面收到消息：', {
-                    origin: event.origin,
-                    data: event.data
-                });
-
-                // 只接受指定直播域名
-                if (event.origin !== 'https://live.stmpsk.cn') {
-                    console.warn(
-                        '忽略其他来源的消息：',
-                        event.origin
+            window.addEventListener(
+                'message',
+                function (event) {
+                    console.log(
+                        'GitHub父页面收到消息：',
+                        {
+                            origin: event.origin,
+                            data: event.data
+                        }
                     );
-                    return;
-                }
 
-                if (
-                    !event.data ||
-                    event.data.type !== 'wechat-login' ||
-                    !event.data.url
-                ) {
-                    return;
-                }
-
-                try {
-                    const authUrl = new URL(event.data.url);
-
-                    // 只允许跳转到微信官方 OAuth 地址
-                    if (
-                        authUrl.protocol !== 'https:' ||
-                        authUrl.hostname !==
-                            'open.weixin.qq.com' ||
-                        authUrl.pathname !==
-                            '/connect/oauth2/authorize'
-                    ) {
-                        console.error(
-                            '微信授权地址无效：',
-                            authUrl.href
-                        );
+                    /*
+                     * 只接受live.stmpsk.cn发来的消息。
+                     */
+                    if (event.origin !== LIVE_ORIGIN) {
                         return;
                     }
 
-                    console.log(
-                        '顶层跳转微信授权：',
-                        authUrl.href
-                    );
+                    if (!event.data) {
+                        return;
+                    }
 
-                    window.location.href = authUrl.href;
-                } catch (error) {
-                    console.error(
-                        '解析微信授权地址失败：',
-                        error
-                    );
+                    /*
+                     * 直播页面主动请求用户信息。
+                     */
+                    if (
+                        event.data.type ===
+                        'request-login-user'
+                    ) {
+                        const loginUser = getLoginUser();
+
+                        event.source.postMessage({
+                            type: 'login-user',
+                            user: loginUser
+                        }, LIVE_ORIGIN);
+
+                        return;
+                    }
+
+                    /*
+                     * 直播页面请求打开微信授权。
+                     */
+                    if (
+                        event.data.type ===
+                        'wechat-login'
+                    ) {
+                        if (!event.data.url) {
+                            console.error(
+                                '缺少微信授权地址'
+                            );
+                            return;
+                        }
+
+                        try {
+                            const authUrl =
+                                new URL(event.data.url);
+
+                            /*
+                             * 只允许微信官方授权地址。
+                             */
+                            if (
+                                authUrl.protocol !==
+                                    'https:' ||
+                                authUrl.hostname !==
+                                    'open.weixin.qq.com' ||
+                                authUrl.pathname !==
+                                    '/connect/oauth2/authorize'
+                            ) {
+                                console.error(
+                                    '微信授权地址无效：',
+                                    authUrl.href
+                                );
+                                return;
+                            }
+
+                            console.log(
+                                '打开微信授权：',
+                                authUrl.href
+                            );
+
+                            /*
+                             * GitHub顶层页面执行跳转，
+                             * 避免授权页面加载在iframe里。
+                             */
+                            window.location.href =
+                                authUrl.href;
+                        } catch (error) {
+                            console.error(
+                                '解析微信授权地址失败：',
+                                error
+                            );
+                        }
+                    }
                 }
-            });
+            );
+
+            /*
+             * 微信资料保存后清除URL中的个人资料参数，
+             * 避免刷新或分享时继续携带。
+             */
+            if (callbackUser.openid) {
+                window.history.replaceState(
+                    null,
+                    '',
+                    window.location.pathname
+                );
+            }
+
+            console.log(
+                '当前GitHub登录信息：',
+                getLoginUser()
+            );
         })();
     </script>
 </body>
