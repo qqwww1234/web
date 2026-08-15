@@ -8,41 +8,46 @@
         content="width=device-width, initial-scale=1.0,
                  maximum-scale=1.0, user-scalable=no">
 
-    <!-- 默认标题，收到直播页面消息后会自动替换 -->
     <title>直播</title>
 
-    <!-- 普通页面描述 -->
     <meta
         id="pageDescription"
         name="description"
         content="点击进入直播间">
 
-    <!-- 分享卡片信息 -->
+    <!-- 微信分享标题 -->
     <meta
         id="shareTitle"
         property="og:title"
         content="直播">
 
+    <!-- 微信分享描述 -->
     <meta
         id="shareDescription"
         property="og:description"
         content="点击进入直播间">
 
-    <meta
-        property="og:type"
-        content="website">
+    <meta property="og:type" content="website">
 
+    <!-- 微信分享图片 -->
     <meta
         id="shareImage"
         property="og:image"
-        content="http://fxfx.stmpsk.cn/logo.png">
+        content="https://qqwww1234.github.io/web/share-logo.png?v=20260815">
+
+    <meta
+        property="og:image:secure_url"
+        content="https://qqwww1234.github.io/web/share-logo.png?v=20260815">
+
+    <meta property="og:image:width" content="300">
+    <meta property="og:image:height" content="300">
 
     <link
         id="shareImageLink"
         rel="image_src"
-        href="http://fxfx.stmpsk.cn/logo.png">
+        href="https://qqwww1234.github.io/web/share-logo.png?v=20260815">
 
-    <!-- 兼容部分分享抓取方式 -->
+    <!-- 兼容其他分享抓取方式 -->
     <meta
         id="itemTitle"
         itemprop="name"
@@ -56,7 +61,7 @@
     <meta
         id="itemImage"
         itemprop="image"
-        content="http://fxfx.stmpsk.cn/logo.png">
+        content="https://qqwww1234.github.io/web/share-logo.png?v=20260815">
 
     <style>
         * {
@@ -73,15 +78,36 @@
             background: #000;
         }
 
+        /*
+         * 实际存在于页面中的分享图片。
+         * 图片位于 iframe 后面，用户看不到，但微信可以读取。
+         */
+        #shareCover {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 300px;
+            height: 300px;
+            object-fit: cover;
+            pointer-events: none;
+            z-index: 0;
+        }
+
         #liveFrame {
+            position: fixed;
+            left: 0;
+            top: 0;
             width: 100%;
             height: 100%;
             border: none;
             display: block;
             background: #000;
+            z-index: 1;
         }
 
         #errorMessage {
+            position: relative;
+            z-index: 2;
             width: 100%;
             padding: 30px 15px;
             color: #333;
@@ -94,6 +120,14 @@
 
 <body>
 
+    <!-- 不要删除，这是给微信读取的实际图片 -->
+    <img
+        id="shareCover"
+        src="https://qqwww1234.github.io/web/share-logo.png?v=20260815"
+        width="300"
+        height="300"
+        alt="直播">
+
     <iframe
         id="liveFrame"
         allow="autoplay; fullscreen"
@@ -103,40 +137,63 @@
     <script>
         (function () {
             var LIVE_ORIGIN = 'https://live.stmpsk.cn';
-            var GITHUB_ORIGIN = 'https://qqwww1234.github.io';
 
             var DEFAULT_TITLE = '直播';
             var DEFAULT_DESCRIPTION = '点击进入直播间';
+
+            /*
+             * 分享图片固定使用 GitHub 上的图片，
+             * 不再使用 fxfx.stmpsk.cn 的 HTTP 图片。
+             */
             var DEFAULT_IMAGE =
-                'http://fxfx.stmpsk.cn/logo.png';
+                'https://qqwww1234.github.io/web/share-logo.png?v=20260815';
 
             var liveFrame =
                 document.getElementById('liveFrame');
 
             /*
-             * 更新 GitHub 外层页面的标题和分享信息
+             * 更新页面标题和分享资料
              */
-            function updateShareInfo(title, description, image) {
+            function updateShareInfo(title, description) {
                 title = title || DEFAULT_TITLE;
+
                 description =
                     description || DEFAULT_DESCRIPTION;
-                image = image || DEFAULT_IMAGE;
+
+                /*
+                 * 图片固定，不接受 iframe 传来的图片地址，
+                 * 防止再次被 HTTP 图片覆盖。
+                 */
+                var image = DEFAULT_IMAGE;
 
                 document.title = title;
 
                 setMetaContent('shareTitle', title);
+
                 setMetaContent(
                     'shareDescription',
                     description
                 );
-                setMetaContent('shareImage', image);
 
-                setMetaContent('itemTitle', title);
+                setMetaContent(
+                    'shareImage',
+                    image
+                );
+
+                setMetaContent(
+                    'itemTitle',
+                    title
+                );
+
                 setMetaContent(
                     'itemDescription',
                     description
                 );
-                setMetaContent('itemImage', image);
+
+                setMetaContent(
+                    'itemImage',
+                    image
+                );
 
                 setMetaContent(
                     'pageDescription',
@@ -149,14 +206,30 @@
                     );
 
                 if (imageLink) {
-                    imageLink.setAttribute('href', image);
+                    imageLink.setAttribute(
+                        'href',
+                        image
+                    );
                 }
 
-                console.log('分享资料已更新：', {
-                    title: title,
-                    description: description,
-                    image: image
-                });
+                var shareCover =
+                    document.getElementById(
+                        'shareCover'
+                    );
+
+                if (shareCover) {
+                    shareCover.src = image;
+                    shareCover.alt = title;
+                }
+
+                console.log(
+                    '分享资料已更新：',
+                    {
+                        title: title,
+                        description: description,
+                        image: image
+                    }
+                );
             }
 
             function setMetaContent(id, value) {
@@ -172,8 +245,8 @@
             }
 
             /*
-             * 从微信授权回调参数读取登录资料，
-             * 保存到 GitHub 域名的 localStorage
+             * 从微信授权回调地址读取登录资料，
+             * 保存到 GitHub 域名的 localStorage。
              */
             function saveLoginUserFromUrl() {
                 var params =
@@ -192,13 +265,18 @@
                     openid: openid,
 
                     user_id:
-                        params.get('user_id') || '',
+                        params.get('user_id') ||
+                        openid,
 
                     user_nickname:
-                        params.get('user_nickname') || '',
+                        params.get(
+                            'user_nickname'
+                        ) || '',
 
                     user_touxiang:
-                        params.get('user_touxiang') || ''
+                        params.get(
+                            'user_touxiang'
+                        ) || ''
                 };
 
                 try {
@@ -214,8 +292,8 @@
                 }
 
                 /*
-                 * 从地址栏删除用户资料，
-                 * 避免分享时把用户资料一起分享出去
+                 * 删除地址栏中的用户资料，
+                 * 避免分享时携带用户信息。
                  */
                 params.delete('openid');
                 params.delete('user_id');
@@ -231,10 +309,12 @@
                     params.toString();
 
                 if (remainingQuery) {
-                    cleanUrl += '?' + remainingQuery;
+                    cleanUrl +=
+                        '?' + remainingQuery;
                 }
 
-                cleanUrl += window.location.hash;
+                cleanUrl +=
+                    window.location.hash;
 
                 window.history.replaceState(
                     null,
@@ -244,7 +324,7 @@
             }
 
             /*
-             * 读取已经保存的微信登录资料
+             * 读取已经保存的登录资料
              */
             function getLoginUser() {
                 try {
@@ -269,7 +349,7 @@
             }
 
             /*
-             * 把登录资料发送给 live.stmpsk.cn
+             * 把登录资料发送给直播页面
              */
             function sendLoginUserToLive() {
                 if (
@@ -289,19 +369,21 @@
             }
 
             /*
-             * 监听 iframe 发来的消息
+             * 接收直播页面发送的消息
              */
             window.addEventListener(
                 'message',
                 function (event) {
-                    if (event.origin !== LIVE_ORIGIN) {
+                    if (
+                        event.origin !== LIVE_ORIGIN
+                    ) {
                         return;
                     }
 
                     var data = event.data || {};
 
                     /*
-                     * 直播页面主动索取登录资料
+                     * 直播页面索取登录资料
                      */
                     if (
                         data.type ===
@@ -312,7 +394,7 @@
                     }
 
                     /*
-                     * 直播页面发来直播标题
+                     * 接收直播名称和描述
                      */
                     if (
                         data.type ===
@@ -320,15 +402,15 @@
                     ) {
                         updateShareInfo(
                             data.title,
-                            data.description,
-                            data.image
+                            data.description
                         );
+
                         return;
                     }
 
                     /*
-                     * 直播 iframe 请求微信授权登录。
-                     * 必须由 GitHub 外层页面进行顶层跳转。
+                     * iframe 请求微信登录，
+                     * 由 GitHub 外层页面顶层跳转。
                      */
                     if (
                         data.type ===
@@ -339,7 +421,7 @@
                             String(data.url);
 
                         /*
-                         * 只允许跳转微信官方授权地址
+                         * 只允许打开微信官方授权地址
                          */
                         if (
                             loginUrl.indexOf(
@@ -352,17 +434,38 @@
 
                         return;
                     }
+
+                    /*
+                     * iframe 请求顶层打开页面。
+                     * 购买和支付页面可以使用此消息。
+                     */
+                    if (
+                        data.type ===
+                        'top-redirect' &&
+                        data.url
+                    ) {
+                        var redirectUrl =
+                            String(data.url);
+
+                        if (
+                            redirectUrl.indexOf(
+                                'https://'
+                            ) === 0
+                        ) {
+                            window.location.href =
+                                redirectUrl;
+                        }
+                    }
                 }
             );
 
             /*
-             * 保存微信授权回调资料
+             * 保存微信授权返回的登录资料
              */
             saveLoginUserFromUrl();
 
             /*
-             * 解析当前 GitHub 地址：
-             *
+             * 解析地址：
              * /web/live/10038/ZSI6eO/sid/1786769054
              */
             var parts =
@@ -409,9 +512,9 @@
                 encodeURIComponent(sid);
 
             /*
-             * iframe 加载完成后：
-             * 1. 发送微信登录资料
-             * 2. 索取直播名称和分享信息
+             * iframe 加载完成以后：
+             * 1. 发送登录资料
+             * 2. 索取直播标题
              */
             liveFrame.addEventListener(
                 'load',
@@ -429,12 +532,10 @@
             );
 
             /*
-             * 必须最后设置 iframe 地址，
-             * 确保消息监听已经准备完成
+             * 最后设置 iframe 地址
              */
             liveFrame.src = targetUrl;
         })();
     </script>
-
 </body>
 </html>
